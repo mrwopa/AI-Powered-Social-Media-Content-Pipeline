@@ -132,13 +132,12 @@ All credentials are stored securely in **n8n's Credentials Manager**
 
 ---
 
-## 📋 How to Run
+## 📥 Import the Workflow
 
-1. Import the workflow JSON into your n8n instance
-2. Add your credentials (OpenRouter, Slack, LinkedIn)
-3. Configure your RSS feed URL in the trigger node
-4. Activate the workflow
-5. Wait for a new article to trigger the pipeline — or test manually
+1. Download [`workflow.json`](workflow.json)
+2. In n8n, go to **Workflows** → **Import from file**
+3. Select the downloaded file
+4. Add your own credentials and activate
 
 ---
 
