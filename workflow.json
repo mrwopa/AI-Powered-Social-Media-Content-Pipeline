@@ -1,0 +1,254 @@
+{
+  "name": "rss socials workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        224,
+        64
+      ],
+      "id": "f64008cb-6391-476a-b802-21f21e065970",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "iGi9TYQasUDioiR2",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert social media content strategist and copywriter specializing in transforming news articles and RSS feed content into engaging, platform-native posts.\n\nYour task is to generate original social media content based solely on the information provided below.\n\n## Input\n\n* **Title:** {{ $json.title }}\n* **Summary:** {{ $json.contentSnippet }}\n* **Source URL:** {{ $json.link }}\n\n## Instructions\n\n1. Read and understand the context of the article before writing.\n2. Preserve factual accuracy. Do not invent quotes, statistics, or details that are not supported by the provided information.\n3. Rewrite the content in an engaging, human-like style rather than summarizing verbatim.\n4. Tailor each post to the conventions and audience expectations of its platform.\n5. Avoid introductory phrases such as \"Here's a post\" or \"Based on the article.\"\n6. Do not include markdown, code fences, explanations, or any text outside the required JSON object.\n7. Ensure all JSON strings are properly escaped and valid.\n\n## Platform Requirements\n\n### LinkedIn\n\n* Length: 100–170 words.\n* Tone: Professional, insightful, and thought-provoking.\n* Begin with a compelling hook.\n* Clearly explain the significance or impact of the news.\n* End with an engaging question to encourage discussion.\n* Include exactly 3–5 relevant hashtags at the end.\n\n### Twitter/X\n\n* Maximum 280 characters.\n* Tone: Concise, punchy, and attention-grabbing.\n* Highlight the most newsworthy takeaway.\n* Include 1–2 relevant hashtags.\n* Do not exceed the character limit.\n\n### Instagram\n\n* Tone: Conversational, engaging, and easy to read.\n* Use appropriate emojis naturally (avoid overuse).\n* Encourage interaction where suitable.\n* Include exactly 3–5 relevant hashtags at the end.\n\n## Output Format\n\nReturn ONLY a valid JSON object with this exact structure:\n\n{\n\"linkedin\": \"...\",\n\"twitter\": \"...\",\n\"instagram\": \"...\"\n}\n\nDo not output any additional text before or after the JSON.\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        224,
+        -144
+      ],
+      "id": "4f0910be-07e1-49b6-9aec-be34c21d8bdd",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.text || $input.item.json.output || $input.item.json.response;\n\n// Clean up in case the model wrapped it in markdown code blocks\nconst cleaned = raw.replace(/```json\\n?/g, '').replace(/```/g, '').trim();\n\nconst posts = JSON.parse(cleaned);\n\nreturn {\n  json: {\n    title: $('RSS Feed Trigger').item.json.title,\n    link: $('RSS Feed Trigger').item.json.link,\n    linkedin: posts.linkedin,\n    twitter: posts.twitter,\n    instagram: posts.instagram\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -144
+      ],
+      "id": "afa90ce8-134e-446a-a914-7f6a5904cf93",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BAR23R9MG",
+          "mode": "id"
+        },
+        "message": "=📰 *New Article:* {{ $json.title }}\n🔗 {{ $json.link }}\n\n*LinkedIn Draft:*\n{{ $json.linkedin }}\n\n*Twitter Draft:*\n{{ $json.twitter }}\n\n*Instagram Draft:*\n{{ $json.instagram }}\n\n✅ Reply \"approve\" or ❌ \"reject\" to this message.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        816,
+        -144
+      ],
+      "id": "b5f8aff4-ca09-4b2f-ac45-16766dc4337c",
+      "name": "Send message and wait for response",
+      "webhookId": "7045fce3-79b1-437d-8db1-ff6feb76b881",
+      "credentials": {
+        "slackApi": {
+          "id": "wrUOBrVyJGosQhnO",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b60da9f6-0fe9-46bf-a717-ac0f63ac4400",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1024,
+        -144
+      ],
+      "id": "fe2fa466-0f93-46cc-8874-ee64c2e33118",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Linkedin-Version",
+              "value": "202606"
+            },
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:person:VxiysbOwum\",\n  \"commentary\": \"{{ $('Code in JavaScript').item.json.linkedin }}\",\n  \"visibility\": \"PUBLIC\",\n  \"distribution\": {\n    \"feedDistribution\": \"MAIN_FEED\",\n    \"targetEntities\": [],\n    \"thirdPartyDistributionChannels\": []\n  },\n  \"lifecycleState\": \"PUBLISHED\",\n  \"isReshareDisabledByAuthor\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1232,
+        -240
+      ],
+      "id": "22a49efe-0fb3-4911-9a00-5708b591afa2",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "JR69O2w8D2woTIMJ",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "hour": 12
+            }
+          ]
+        },
+        "feedUrl": "https://huggingface.co/blog/feed.xml"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -144
+      ],
+      "id": "9fe56b9b-c790-4bbb-b84f-a1d33b878e55",
+      "name": "RSS Feed Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eb9b2632-839e-4273-a92e-82d71487201f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a8fda7bb0a48efaa3a2ce0bee29e6fef1bc536f5f7bcf6eaf2f7a677a16378b3"
+  },
+  "id": "oKSCDvxsn7a7RIKa",
+  "tags": []
+}
