@@ -158,7 +158,7 @@ All credentials are stored securely in **n8n's Credentials Manager**
 
 ## 👤 Author
 
-**Mrwopa** — AI/ML Engineer  
+**Babalola o. Samuel** — AI/ML Engineer  
 Specializing in Agentic AI, MLOps, LangChain, LangGraph, 
 NLP & Computer Vision
 
